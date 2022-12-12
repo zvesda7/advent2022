@@ -47,18 +47,14 @@ func loadMonkeys(instr []string) []monkey {
 		switch instr[index][operatorIndex] {
 		case '+':
 			if numericErr == nil {
-				fmt.Println("+", operand)
 				m.operation = func(x int64) int64 { return x + operand }
 			} else if operandStr == "old" {
-				fmt.Println("+", "old")
 				m.operation = func(x int64) int64 { return x + x }
 			}
 		case '*':
 			if numericErr == nil {
-				fmt.Println("*", operand)
 				m.operation = func(x int64) int64 { return x * operand }
 			} else if operandStr == "old" {
-				fmt.Println("*", "old")
 				m.operation = func(x int64) int64 { return x * x }
 			}
 		}
@@ -80,6 +76,11 @@ func loadMonkeys(instr []string) []monkey {
 }
 
 func calcMonkeyBusiness(monkeys []monkey, numRounds int, div3Worry bool) int64 {
+	primeFactors := 1
+	for m := 0; m < len(monkeys); m++ {
+		primeFactors *= int(monkeys[m].testDivisor)
+	}
+
 	for round := 0; round < numRounds; round++ {
 		for m := 0; m < len(monkeys); m++ {
 			monkey := &monkeys[m]
@@ -90,6 +91,8 @@ func calcMonkeyBusiness(monkeys []monkey, numRounds int, div3Worry bool) int64 {
 				item = monkey.operation(item)
 				if div3Worry {
 					item = item / 3
+				} else if item >= int64(primeFactors) {
+					item = item % int64(primeFactors)
 				}
 				if (item % monkey.testDivisor) == 0 {
 					monkeys[monkey.ifTrueMonkeyI].items = append(monkeys[monkey.ifTrueMonkeyI].items, item)
@@ -106,10 +109,6 @@ func calcMonkeyBusiness(monkeys []monkey, numRounds int, div3Worry bool) int64 {
 	}
 	fmt.Println(numInspects)
 	sort.Ints((numInspects))
-
-	fmt.Println("m1", numInspects[len(numInspects)-1])
-	fmt.Println("m2", numInspects[len(numInspects)-2])
-
 	return int64(numInspects[len(numInspects)-1]) * int64(numInspects[len(numInspects)-2])
 }
 
@@ -125,6 +124,6 @@ func main() {
 	fmt.Println("Part 1", part1)
 
 	monkeys2 := loadMonkeys(instr)
-	part2 := calcMonkeyBusiness(monkeys2, 20, false)
+	part2 := calcMonkeyBusiness(monkeys2, 10000, false)
 	fmt.Println("Part 2", part2)
 }
