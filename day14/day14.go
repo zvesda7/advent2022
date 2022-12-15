@@ -5,6 +5,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 func readLines(path string) ([]string, error) {
@@ -16,6 +19,8 @@ type Point struct {
 	x int
 	y int
 }
+
+type render func(*[][]Block)
 
 type Block byte
 
@@ -49,8 +54,8 @@ func fillLine(board *[][]Block, a Point, b Point) {
 	}
 }
 
-const xStart = 0
-const xEnd = 1000
+const xStart = 400
+const xEnd = 600
 const yStart = 0
 const yEnd = 173
 
@@ -110,7 +115,7 @@ func loadBoard(paths [][]Point, addFloor bool) *[][]Block {
 }
 
 //returns number of sand blocks rested
-func runSimul(board *[][]Block) int {
+func runSimul(board *[][]Block, cb render) int {
 	foundRest := true
 	restCount := 0
 	for foundRest && (*board)[xSandSrc][ySandSrc] != Sand {
@@ -139,13 +144,12 @@ func runSimul(board *[][]Block) int {
 						(*board)[sand.x][sand.y] = Sand
 						foundRest = true
 						restCount++
+						cb(board)
 						break
 					}
 				}
 			}
 			(*board)[sand.x][sand.y] = Sand
-			//printBoard(board)
-			//time.Sleep(250 * time.Millisecond)
 		}
 	}
 	return restCount
@@ -175,11 +179,68 @@ func main() {
 	}
 
 	board := loadBoard(paths, false)
-	restCount := runSimul(board)
-	fmt.Println("Part 1", restCount)
+	goSimulate(board)
 
-	board2 := loadBoard(paths, true)
-	restCount2 := runSimul(board2)
-	fmt.Println("Part 2", restCount2)
+}
+
+func goSimulate(board *[][]Block) {
+	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		panic(err)
+	}
+	defer sdl.Quit()
+
+	window, err := sdl.CreateWindow("test", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+		800, 800, sdl.WINDOW_SHOWN)
+	if err != nil {
+		panic(err)
+	}
+	defer window.Destroy()
+
+	surface, err := window.GetSurface()
+	if err != nil {
+		panic(err)
+	}
+	surface.FillRect(nil, 0)
+
+	runSimul(board, func(board *[][]Block) {
+		for x := 0; x < len(*board); x++ {
+			for y := 0; y < len((*board)[x]); y++ {
+				switch (*board)[x][y] {
+				case Wall:
+					rect := sdl.Rect{4 * int32(x), 4 * int32(y), 4, 4}
+					surface.FillRect(&rect, 0xffff0000)
+				case Sand:
+					rect := sdl.Rect{4 * int32(x), 4 * int32(y), 4, 4}
+					surface.FillRect(&rect, 0xff00ff00)
+				}
+			}
+		}
+		window.UpdateSurface()
+
+		running := true
+		t := time.Now().UnixMilli()
+		for running && (time.Now().UnixMilli()-t) < 17 {
+			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+				switch event.(type) {
+				case *sdl.QuitEvent:
+					println("Quit")
+					running = false
+					break
+				}
+			}
+		}
+	})
+
+	running := true
+	for running {
+		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			switch event.(type) {
+			case *sdl.QuitEvent:
+				println("Quit")
+				running = false
+				break
+			}
+		}
+	}
 
 }
