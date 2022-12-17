@@ -15,6 +15,7 @@ func readLines(path string) ([]string, error) {
 }
 
 type Node struct {
+	nth       int
 	name      string
 	flowRate  int
 	links     []*Node
@@ -35,10 +36,11 @@ func parseNodes(instr []string) map[string]*Node {
 	nodes := make(map[string]*Node)
 	getNums := regexp.MustCompile("[-0-9]+")
 	getNodeNames := regexp.MustCompile("[A-Z][A-Z]")
-	for _, line := range instr {
+	for i, line := range instr {
 		numStrings := getNums.FindAllString(line, -1)
 		nameStrings := getNodeNames.FindAllString(line, -1)
 		n := Node{}
+		n.nth = i + 1
 		n.name = nameStrings[0]
 		n.flowRate, _ = strconv.Atoi(numStrings[0])
 		for i := 1; i < len(nameStrings); i++ {
@@ -65,6 +67,9 @@ func getValvesToOpen(nodes map[string]*Node) []*Node {
 	}
 	return toOpen
 }
+
+var pathPreCalcs map[int]int
+
 func findShortestPath(startN *Node, endN *Node) int {
 	//BFS
 	dists := map[string]int{}
@@ -116,7 +121,7 @@ func calcTree(t *TreeNode, depth int, maxDepth int, lastLayer *[]*TreeNode) {
 	}
 	if t.todo != nil {
 		for i, x := range t.todo {
-			d := findShortestPath(t.node, x) + 1 //plus 1 for turning the valve on
+			d := pathPreCalcs[t.node.nth*1000+x.nth] + 1 //plus 1 for turning the valve on
 			newt := TreeNode{}
 			newt.parent = t
 			newt.node = x
@@ -165,7 +170,7 @@ func pruneTree(root *TreeNode, lastLayer *[]*TreeNode, curDepth int, maxDepth in
 }
 
 func main() {
-	initialDepth := 4
+	initialDepth := 3
 	var instr, err = readLines("input.txt")
 	if err != nil {
 		fmt.Println(err)
@@ -174,6 +179,15 @@ func main() {
 
 	nodes := parseNodes(instr)
 	valves := getValvesToOpen(nodes)
+
+	//precalc distances
+	pathPreCalcs = make(map[int]int)
+	valvesWithAA := append(valves, nodes["AA"])
+	for _, x := range valvesWithAA {
+		for _, y := range valvesWithAA {
+			pathPreCalcs[x.nth*1000+y.nth] = findShortestPath(x, y)
+		}
+	}
 
 	tree := TreeNode{}
 	tree.todo = valves
