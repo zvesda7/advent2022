@@ -25,9 +25,11 @@ type Node struct {
 type TreeNode struct {
 	parent   *TreeNode
 	children []*TreeNode
-	node     *Node
+	node1    *Node
+	node2    *Node
 	score    int
-	steps    int
+	steps1   int
+	steps2   int
 	todo     []*Node
 	keep     bool
 }
@@ -96,10 +98,10 @@ func findShortestPath(startN *Node, endN *Node) int {
 }
 
 func calcTotalFlow(step int, node *Node) int {
-	if step > 30 {
+	if step > 26 {
 		return 0
 	}
-	return (30 - step) * node.flowRate
+	return (26 - step) * node.flowRate
 }
 
 func remove(nodes []*Node, index int) []*Node {
@@ -114,20 +116,63 @@ func remove(nodes []*Node, index int) []*Node {
 	return newArr
 }
 
+type NodePair struct {
+	node1 *Node
+	node2 *Node
+}
+
+func chooseTwo(list []*Node) []NodePair {
+	var nps []NodePair
+	for i := 0; i < len(list)-1; i++ {
+		for j := i + 1; j < len(list); j++ {
+			np := NodePair{
+				list[i],
+				list[j],
+			}
+			nps = append(nps, np)
+			np2 := NodePair{
+				list[j],
+				list[i],
+			}
+			nps = append(nps, np2)
+		}
+	}
+	return nps
+}
+
+func remove2(nodes []*Node, n1 *Node, n2 *Node) []*Node {
+	newArr := make([]*Node, len(nodes)-2)
+	k := 0
+	for _, v := range nodes {
+		if v.nth != n1.nth && v.nth != n2.nth {
+			newArr[k] = v
+			k++
+		}
+	}
+	return newArr
+}
+
 func calcTree(t *TreeNode, depth int, maxDepth int, lastLayer *[]*TreeNode) {
 	if depth > maxDepth {
 		*lastLayer = append(*lastLayer, t)
 		return
 	}
 	if t.todo != nil {
-		for i, x := range t.todo {
-			d := pathPreCalcs[t.node.nth*1000+x.nth] + 1 //plus 1 for turning the valve on
+		pairs := chooseTwo(t.todo)
+		for _, pair := range pairs {
+
 			newt := TreeNode{}
 			newt.parent = t
-			newt.node = x
-			newt.steps = t.steps + d
-			newt.score = t.score + calcTotalFlow(newt.steps, x)
-			newt.todo = remove(t.todo, i)
+			d := pathPreCalcs[t.node1.nth*1000+pair.node1.nth] + 1 //plus 1 for turning the valve on
+			newt.node1 = pair.node1
+			newt.steps1 = t.steps1 + d
+
+			d2 := pathPreCalcs[t.node2.nth*1000+pair.node2.nth] + 1 //plus 1 for turning the valve on
+			newt.node2 = pair.node2
+			newt.steps2 = t.steps2 + d2
+
+			newt.score = t.score + calcTotalFlow(newt.steps1, pair.node1) + calcTotalFlow(newt.steps2, pair.node2)
+			newt.todo = remove2(t.todo, pair.node1, pair.node2)
 			t.children = append(t.children, &newt)
 		}
 		t.todo = nil
@@ -159,7 +204,7 @@ func pruneRecurv(t *TreeNode) {
 }
 
 func pruneTree(root *TreeNode, lastLayer *[]*TreeNode, curDepth int, maxDepth int) {
-	reduceFactor := maxDepth - curDepth + 1
+	reduceFactor := 5 * curDepth
 	(*lastLayer) = (*lastLayer)[len(*lastLayer)-len(*lastLayer)/reduceFactor:]
 	//fmt.Println("highest", (*lastLayer)[len(*lastLayer)-1].steps)
 	//fmt.Println(reduceFactor, len(*lastLayer))
@@ -170,8 +215,8 @@ func pruneTree(root *TreeNode, lastLayer *[]*TreeNode, curDepth int, maxDepth in
 }
 
 func main() {
-	initialDepth := 3
-	var instr, err = readLines("input.txt")
+	initialDepth := 2
+	var instr, err = readLines("test.txt")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
@@ -179,6 +224,10 @@ func main() {
 
 	nodes := parseNodes(instr)
 	valves := getValvesToOpen(nodes)
+
+	//sort.Slice(valves, func(i, j int) bool {
+	//	return (valves)[i].name < (valves)[j].name
+	//})
 
 	//precalc distances
 	pathPreCalcs = make(map[int]int)
@@ -191,18 +240,37 @@ func main() {
 
 	tree := TreeNode{}
 	tree.todo = valves
-	tree.node = nodes["AA"]
-	maxDepth := len(valves)
+	tree.node1 = nodes["AA"]
+	tree.node2 = nodes["AA"]
+	maxDepth := len(valves) / 2
 	for depth := initialDepth; depth <= maxDepth; depth++ {
 		lastLayer := []*TreeNode{}
 		calcTree(&tree, 1, depth, &lastLayer)
 		sort.Slice(lastLayer, func(i, j int) bool {
 			return (lastLayer)[i].score < (lastLayer)[j].score
 		})
-		fmt.Println(lastLayer[len(lastLayer)-1].score)
+		fmt.Println(len(lastLayer), lastLayer[len(lastLayer)-1].score)
 		if depth != maxDepth {
 			pruneTree(&tree, &lastLayer, depth, maxDepth)
+		} else {
+			printStack(lastLayer[len(lastLayer)-1])
+			//for i := 0; i < len(lastLayer); i++ {
+			//fmt.Println(lastLayer[i].score)
+			//printStack(lastLayer[i])
+			//}
 		}
 	}
 
 }
+
+func printStack(lowestNode *TreeNode) {
+	fmt.Println(lowestNode.node1.name, lowestNode.node2.name)
+	if lowestNode.parent != nil {
+		printStack(lowestNode.parent)
+	}
+}
+
+//EE CC
+//HH BB
+//DD JJ
+//AA AA
