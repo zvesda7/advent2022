@@ -160,45 +160,7 @@ func (pf *PlayField) setPiece(p *Piece, x int, y int) {
 	}
 }
 
-func printBottom10(pf *PlayField, p Piece, px int, py int) {
-	for y := 10; y >= 0; y-- {
-		for x := 0; x < len(pf.cells[0]); x++ {
-			if pf.cells[y][x] == 1 {
-				fmt.Print("#")
-			} else {
-				if x >= px && x < (px+4) && y > (py-4) && y <= py {
-					if p.bitmap[py-y][x-px] == 1 {
-						fmt.Print("@")
-					} else {
-						fmt.Print(".")
-					}
-				} else {
-					fmt.Print(".")
-				}
-			}
-		}
-		fmt.Println()
-	}
-	fmt.Println()
-
-}
-
-func printTop10(pf *PlayField) {
-	for y := pf.topFilledRow + 1; y >= pf.topFilledRow-21; y-- {
-		for x := 0; x < len(pf.cells[0]); x++ {
-			if pf.cells[pf.calcY(y)][x] == 1 {
-				fmt.Print("#")
-			} else {
-
-				fmt.Print(".")
-
-			}
-		}
-		fmt.Println()
-	}
-	fmt.Println()
-}
-
+//column height, string of last top 10 rows
 func calcLarge(pattern string, numPieces int) int {
 	leftStartPos := 2
 	bottomStartPos := 3
@@ -217,47 +179,55 @@ func calcLarge(pattern string, numPieces int) int {
 			if pf.checkCanMove(p, px+wind, py) {
 				px += wind
 			}
-			//printBottom10(pf, *p, px, py)
 			if pf.checkCanMove(p, px, py-1) {
 				py--
 			} else {
 				rested = true
 				pf.setPiece(p, px, py)
 			}
-			//printBottom10(pf, *p, px, py)
 		}
 	}
-	fmt.Println("Part1", pf.getTopFilledRow())
-	printTop10(pf)
 	return pf.getTopFilledRow()
 }
 
 func main() {
 
-	var instr, _ = readLines("test.txt")
+	var instr, _ = readLines("input.txt")
 
 	//pieces dropped repeat every 5pieces*10091winds = 50455 times
-	//the pattern at top of stack after 50455 matches pattern at 50455*7 perfectly
-	//formula is ((x-50455)%50455)+50455, take this number and solve that stack.
+	//the pattern at top of stack after 50455*1 matches pattern at 50455*349, and 50455*697
+	//found by search 50455*1 through 50455*1000
+
 	repeatN := 5 * len(instr[0])
-	fmt.Println(repeatN)
+	//dupliTracker := map[string][]int{}
+	//strs := calcLargeMultiple(instr[0], repeatN*1000, repeatN)
+	//for i, s := range strs {
+	//	dupliTracker[s] = append(dupliTracker[s], i)
+	//}
+	//for _, lst := range dupliTracker {
+	//	for _, k := range lst {
+	//		fmt.Print(k, ",")
+	//	}
+	//	fmt.Println()
+	//}
+
+	repeatM := 348
 
 	x1 := calcLarge(instr[0], repeatN)
-	x8 := calcLarge(instr[0], repeatN*8)
+	xM := calcLarge(instr[0], repeatN*(repeatM+1))
 
-	x15 := calcLarge(instr[0], repeatN*15)
-	x22 := calcLarge(instr[0], repeatN*22)
-	x7 := x15 - x8
-	//x15_s := x1 + 2*x7
-	fmt.Println(x1, x8, x7, x8-x1, x15-x8, x22-x15)
+	xM2 := calcLarge(instr[0], repeatN*(repeatM*2+1))
+	xMD := xM2 - xM
+
+	//fmt.Println(x1, x8, x7, x8-x1, x15-x8, x22-x15)
 
 	n := 1000000000000
 
 	x := x1
 	n -= repeatN
 
-	x += n / (repeatN * 7) * x7
-	n = n % (repeatN * 7)
+	x += n / (repeatN * repeatM) * xMD
+	n = n % (repeatN * repeatM)
 
 	x += calcLarge(instr[0], repeatN+n) - x1
 	n = 0
