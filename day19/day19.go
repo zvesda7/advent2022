@@ -23,6 +23,14 @@ type Blueprint struct {
 	geo_obs  int
 }
 
+type Node struct {
+	parent   *Node
+	children []*Node
+
+	todo []*Node
+	keep bool
+}
+
 func parseBlueprints(instr []string) []Blueprint {
 	var bps []Blueprint
 	getNums := regexp.MustCompile("[-0-9]+")
